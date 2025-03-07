@@ -2,6 +2,7 @@ import streamlit as st
 import folium
 import pandas as pd
 from streamlit_folium import st_folium
+from folium.plugins import Draw
 
 
 # Load the CSV data files
@@ -38,7 +39,7 @@ df1 = filter_nyc_data(df1)
 df2 = filter_nyc_data(df2)
 
 
-# Function to create maps with strict NYC bounds
+# Function to create maps with NYC map clipper
 def create_map(data, color):
     # Calculate the center of NYC bounds
     center_lat = (NYC_BOUNDS['lat_min'] + NYC_BOUNDS['lat_max']) / 2
@@ -48,8 +49,7 @@ def create_map(data, color):
     mapa = folium.Map(
         location=[center_lat, center_lon],
         zoom_start=11,
-        tiles="OpenStreetMap",
-        max_bounds=True
+        tiles="OpenStreetMap"
     )
 
     # Set strict bounds for NYC
@@ -59,26 +59,47 @@ def create_map(data, color):
     # Apply bounds to restrict the view
     mapa.fit_bounds([sw, ne])
 
-    # Add a rectangle to visualize the bounds
+    # Create a SVG clipPath for the NYC bounds
+    svg_clip_path = f"""
+    <svg width="0" height="0">
+      <defs>
+        <clipPath id="nyc-clip">
+          <rect x="{NYC_BOUNDS['lon_min']}" y="{NYC_BOUNDS['lat_min']}" 
+                width="{NYC_BOUNDS['lon_max'] - NYC_BOUNDS['lon_min']}" 
+                height="{NYC_BOUNDS['lat_max'] - NYC_BOUNDS['lat_min']}" />
+        </clipPath>
+      </defs>
+    </svg>
+    """
+
+    # Apply masking effect to show only NYC region
+    masking_css = """
+    <style>
+      .leaflet-tile-pane {
+        clip-path: polygon(
+          /*SW*/ %s%% %s%%, 
+          /*NW*/ %s%% %s%%, 
+          /*NE*/ %s%% %s%%, 
+          /*SE*/ %s%% %s%%
+        );
+      }
+    </style>
+    """ % (
+        # Convert geo coordinates to percentages for the clip-path
+        # This is an approximation that works for small areas like NYC
+        0, 100,  # SW
+        0, 0,  # NW
+        100, 0,  # NE
+        100, 100  # SE
+    )
+
+    # Add overlay rectangle with borders to show NYC boundary
     folium.Rectangle(
         bounds=[sw, ne],
-        color='gray',
+        color='black',
         weight=2,
         fill=False,
-        dash_array='5, 5'
     ).add_to(mapa)
-
-    # Restrict panning outside bounds
-    bounds_script = f"""
-    <script>
-        var map = document.getElementsByClassName('folium-map')[0]._leaflet_map;
-        map.setMaxBounds([
-            [{NYC_BOUNDS['lat_min']}, {NYC_BOUNDS['lon_min']}],
-            [{NYC_BOUNDS['lat_max']}, {NYC_BOUNDS['lon_max']}]
-        ]);
-        map.options.minZoom = 10;
-    </script>
-    """
 
     # Add markers for each data point
     for _, row in data.iterrows():
@@ -93,8 +114,75 @@ def create_map(data, color):
             fill_opacity=0.7
         ).add_to(mapa)
 
-    # Add the script to enforce bounds
-    mapa.get_root().html.add_child(folium.Element(bounds_script))
+    # Add custom JavaScript to apply a mask outside NYC bounds
+    custom_js = """
+    <script>
+    (function() {
+        // Get the map instance
+        var map = document.getElementsByClassName('folium-map')[0]._leaflet_map;
+
+        // Create a mask layer for NYC
+        var nycBounds = [
+            [%f, %f], // SW
+            [%f, %f]  // NE
+        ];
+
+        // Disable panning outside bounds
+        map.setMaxBounds(nycBounds);
+
+        // Apply a mask overlay outside NYC
+        var mask = L.rectangle(
+            [[-90, -180], [90, 180]], 
+            {
+                color: 'white',
+                fillColor: 'white',
+                fillOpacity: 1,
+                interactive: false
+            }
+        ).addTo(map);
+
+        // Create NYC shape
+        var nycShape = L.rectangle(
+            nycBounds, 
+            {
+                fill: false,
+                color: 'transparent',
+                weight: 0
+            }
+        ).addTo(map);
+
+        // Cut out NYC from the mask
+        map.on('zoom move', function() {
+            // Create SVG mask outside of NYC
+            var mapSize = map.getSize();
+            var maskPolygon = '';
+
+            // Convert NYC bounds to pixel coordinates
+            var swPoint = map.latLngToContainerPoint(nycBounds[0]);
+            var nePoint = map.latLngToContainerPoint(nycBounds[1]);
+
+            // Create a polygon cutout of NYC
+            maskPolygon += 'M0,0L0,' + mapSize.y + 'L' + mapSize.x + ',' + mapSize.y + 'L' + mapSize.x + ',0Z ';
+            maskPolygon += 'M' + swPoint.x + ',' + swPoint.y;
+            maskPolygon += 'L' + swPoint.x + ',' + nePoint.y;
+            maskPolygon += 'L' + nePoint.x + ',' + nePoint.y;
+            maskPolygon += 'L' + nePoint.x + ',' + swPoint.y + 'Z';
+
+            // Apply the cutout mask
+            mask._path.setAttribute('d', maskPolygon);
+        });
+
+        // Trigger initial mask update
+        map.fire('move');
+    })();
+    </script>
+    """ % (
+        NYC_BOUNDS['lat_min'], NYC_BOUNDS['lon_min'],
+        NYC_BOUNDS['lat_max'], NYC_BOUNDS['lon_max']
+    )
+
+    # Add the mask styling and script to the map
+    mapa.get_root().html.add_child(folium.Element(masking_css + custom_js))
 
     return mapa
 
