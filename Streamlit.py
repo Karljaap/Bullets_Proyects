@@ -31,39 +31,66 @@ Each record represents an entity approved to operate under the classification of
 | **LONGITUDE**        | Longitude of the mailing address                         | `longitude`          | Text                |
 | **COMMUNITY BOARD**  | Community board based on the mailing address            | `community_board`    | Text                |
 | **COUNCIL DISTRICT** | Council district where the entity is located            | `council_district`   | Text                |
-| **CENSUS TRACT**     | Census tract associated with the mailing address        | `census_tract`      | Text                |
-| **BIN**             | Building Identification Number (BIN)                     | `bin`                | Text                |
-| **BBL**             | Borough-Block-Lot (BBL) number                           | `bbl`                | Text                |
-| **NTA**             | Neighborhood Tabulation Area                             | `nta`                | Text                |
-| **BORO**            | Borough where the entity is located                      | `boro`               | Text                |
+"""
+
+"""
+# Data Description
+This dataset provides information about school projects currently under construction in New York City, including new schools (Capacity) and Capital Improvement Projects (CIP).
+The data is collected and maintained by the School Construction Authority (SCA) and is updated quarterly. It has been publicly available since October 9, 2011.
+
+# Dictionary Column
+| **Column Name**       | **Description**                                              | **API Field Name**      | **Data Type**      |
+|----------------------|----------------------------------------------------------|----------------------|-------------------|
+| **School Name**           | Name of the school                                      | `name`                 | Text             |
+| **BoroughCode**           | Borough code where the school is located              | `boro`                 | Text             |
+| **Geographical District** | District where the school is located                  | `geo_dist`             | Number           |
+| **Project Description**   | Description of the construction work                  | `projdesc`             | Text             |
+| **Construction Award**    | Value of the prime construction contract              | `award`                | Number           |
+| **Project Type**         | Identifies whether the project is **CIP** or **Capacity** | `constype`             | Text             |
+| **Building ID**           | Unique identifier of the building                     | `buildingid`           | Text             |
+| **Building Address**      | Address of the building under construction            | `building_address`     | Text             |
+| **Latitude**             | Latitude of the site location                         | `latitude`             | Number           |
+| **Longitude**            | Longitude of the site location                        | `longitude`            | Number           |
 """
 
 
-# Load the CSV data file
+# Load data
+@st.cache_data
 def load_data(path):
     return pd.read_csv(path)
 
 
-DATA_PATH = "filtered_data_march_clean.csv"
-df = load_data(DATA_PATH)
+# Data files
+DATA_PATH_1 = "filtered_data_march_clean.csv"
+DATA_PATH_2 = "all_data.csv"
+
+df1 = load_data(DATA_PATH_1)  # Construction waste collection sites
+df2 = load_data(DATA_PATH_2)  # School construction projects
 
 
-# Create a map focused on New York City with a construction-related icon
-def create_map(data):
+# Function to create maps
+def create_map(data, icon, color):
     nyc_coordinates = [40.7128, -74.0060]  # Center of New York City
     mapa = folium.Map(location=nyc_coordinates, zoom_start=12, tiles="OpenStreetMap")
 
     for _, row in data.iterrows():
         folium.Marker(
             location=[row['latitude'], row['longitude']],
-            popup=f"<b>{row['account_name']}</b><br>Lat: {row['latitude']}, Lon: {row['longitude']}",
-            tooltip=f"{row['account_name']} ({row['latitude']}, {row['longitude']})",
-            icon=folium.Icon(icon="wrench", prefix="fa", color="orange")
+            popup=f"<b>{row.get('account_name', row.get('name', ''))}</b><br>{row.get('projdesc', '')}<br>Lat: {row['latitude']}, Lon: {row['longitude']}",
+            tooltip=f"{row.get('account_name', row.get('name', ''))} ({row['latitude']}, {row['longitude']})",
+            icon=folium.Icon(icon=icon, prefix="fa", color=color)
         ).add_to(mapa)
 
     return mapa
 
 
-# Display the map in Streamlit
-st.title("Interactive Map of NYC with Construction Sites")
-st_folium(create_map(df), width=700, height=500)
+# Interface with tabs
+tab1, tab2 = st.tabs(["Construction & Waste", "School Construction"])
+
+with tab1:
+    st.header("Interactive Map of Construction & Waste Collection Sites in NYC")
+    st_folium(create_map(df1, icon="wrench", color="orange"), width=700, height=500)
+
+with tab2:
+    st.header("Interactive Map of School Construction Projects in NYC")
+    st_folium(create_map(df2, icon="graduation-cap", color="blue"), width=700, height=500)
