@@ -16,6 +16,27 @@ DATA_PATH_2 = "all_data.csv"
 df1 = load_data(DATA_PATH_1)
 df2 = load_data(DATA_PATH_2)
 
+# Define NYC bounding box for filtering data
+NYC_BOUNDS = {
+    "lat_min": 40.4774,  # Southernmost point
+    "lat_max": 40.9176,  # Northernmost point
+    "lon_min": -74.2591,  # Westernmost point
+    "lon_max": -73.7004  # Easternmost point
+}
+
+
+def filter_nyc_data(data):
+    return data[
+        (data['latitude'] >= NYC_BOUNDS['lat_min']) &
+        (data['latitude'] <= NYC_BOUNDS['lat_max']) &
+        (data['longitude'] >= NYC_BOUNDS['lon_min']) &
+        (data['longitude'] <= NYC_BOUNDS['lon_max'])
+        ]
+
+
+df1 = filter_nyc_data(df1)
+df2 = filter_nyc_data(df2)
+
 
 # Function to create maps
 def create_map(data, color):
@@ -55,8 +76,8 @@ if selected_tab == "Construction Companies":
     Each record represents an entity approved to operate under the classification of Class 2 C&D Registrants. The information is updated daily and has been publicly available since April 4, 2017.
 
     ## Dictionary 
-    
-    
+
+
     | **Column Name**      | **Description**                                          | **API Field Name**    | **Data Type**        |
     |----------------------|----------------------------------------------------------|----------------------|----------------------|
     | **CREATED**          | Timestamp of when data is processed for OpenData         | `created`            | Floating Timestamp  |
@@ -120,6 +141,6 @@ elif selected_tab == "School Projects":
     | **Census Tract (2020)**  | Census tract where the site is located (Census 2020) | `census_tract`         | Number           |
     | **Neighborhood Tabulation Area (NTA) (2020)** | NYC Neighborhood Tabulation Area (Census 2020) | `nta`                  | Text             |
     | **Location 1**           | System-generated column for mapping representation   | `location_1`           | Location         |
-    
+
     """)
     st_folium(create_map(df2, color="blue"), width=700, height=500)
