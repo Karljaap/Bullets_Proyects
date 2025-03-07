@@ -52,7 +52,7 @@ if selected_tab == "📊 Filtered Data (March)":
     The data is collected and maintained by the School Construction Authority (SCA).
     """)
 
-    st.write("")  # Espaciado
+    st.write("")  
 
     st.markdown("""
     ### Dictionary Column
