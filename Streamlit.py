@@ -18,16 +18,20 @@ df2 = load_data(DATA_PATH_2)
 
 
 # Function to create maps
-def create_map(data, icon, color):
+def create_map(data, color):
     nyc_coordinates = [40.7128, -74.0060]  # Center of New York City
     mapa = folium.Map(location=nyc_coordinates, zoom_start=12, tiles="OpenStreetMap")
 
     for _, row in data.iterrows():
-        folium.Marker(
+        folium.CircleMarker(
             location=[row['latitude'], row['longitude']],
+            radius=6,
             popup=f"<b>{row.get('account_name', row.get('name', 'Unknown'))}</b><br>Lat: {row['latitude']}, Lon: {row['longitude']}",
             tooltip=f"{row.get('account_name', row.get('name', 'Unknown'))} ({row['latitude']}, {row['longitude']})",
-            icon=folium.Icon(icon=icon, prefix="fa", color=color)
+            color=color,
+            fill=True,
+            fill_color=color,
+            fill_opacity=0.7
         ).add_to(mapa)
 
     return mapa
@@ -44,14 +48,15 @@ selected_tab = st.sidebar.radio("Select a category:", ["Construction Companies",
 if selected_tab == "Construction Companies":
     st.subheader("Construction Companies in NYC")
     st.write("""
-    # Data Description
+    ## Data Description
 
     This dataset contains information about companies registered by the Business Integrity Commission (BIC) to collect and dispose of waste materials resulting exclusively from demolition, construction, alterations, or excavations in New York City.
-    
-    Each record represents an entity approved to operate under the classification of Class 2 C&D Registrants. The information is updated daily and has been publicly available since April 4, 2017
-    
-    # Dictionary 
 
+    Each record represents an entity approved to operate under the classification of Class 2 C&D Registrants. The information is updated daily and has been publicly available since April 4, 2017.
+
+    ## Dictionary 
+    
+    
     | **Column Name**      | **Description**                                          | **API Field Name**    | **Data Type**        |
     |----------------------|----------------------------------------------------------|----------------------|----------------------|
     | **CREATED**          | Timestamp of when data is processed for OpenData         | `created`            | Floating Timestamp  |
@@ -81,18 +86,18 @@ if selected_tab == "Construction Companies":
     | **BORO**            | Borough where the entity is located                      | `boro`               | Text                |
 
     """)
-    st_folium(create_map(df1, icon="wrench", color="orange"), width=700, height=500)
+    st_folium(create_map(df1, color="orange"), width=700, height=500)
 
 elif selected_tab == "School Projects":
     st.subheader("School Construction Projects in NYC")
     st.write("""
-    # Data Description
+    ## Data Description
 
     This dataset provides information about school projects currently under construction in New York City, including new schools (Capacity) and Capital Improvement Projects (CIP).
 
     The data is collected and maintained by the School Construction Authority (SCA) and is updated quarterly. It has been publicly available since October 9, 2011.
-    
-    # Dictionary 
+
+    ## Dictionary 
 
     | **Column Name**       | **Description**                                              | **API Field Name**      | **Data Type**      |
     |----------------------|----------------------------------------------------------|----------------------|-------------------|
@@ -115,6 +120,6 @@ elif selected_tab == "School Projects":
     | **Census Tract (2020)**  | Census tract where the site is located (Census 2020) | `census_tract`         | Number           |
     | **Neighborhood Tabulation Area (NTA) (2020)** | NYC Neighborhood Tabulation Area (Census 2020) | `nta`                  | Text             |
     | **Location 1**           | System-generated column for mapping representation   | `location_1`           | Location         |
-
+    
     """)
-    st_folium(create_map(df2, icon="graduation-cap", color="blue"), width=700, height=500)
+    st_folium(create_map(df2, color="blue"), width=700, height=500)
