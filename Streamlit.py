@@ -2,7 +2,6 @@ import streamlit as st
 import folium
 import pandas as pd
 from streamlit_folium import st_folium
-from streamlit_option_menu import option_menu
 
 
 # Load the CSV data files
@@ -39,14 +38,8 @@ st.set_page_config(page_title="NYC Construction Maps", layout="wide")
 st.title("Interactive Maps of NYC Construction")
 
 # Sidebar navigation
-selected_tab = option_menu(
-    menu_title=None,
-    options=["Construction Companies", "School Projects"],
-    icons=["building", "graduation-cap"],
-    menu_icon="cast",
-    default_index=0,
-    orientation="horizontal"
-)
+st.sidebar.title("Navigation")
+selected_tab = st.sidebar.radio("Select a category:", ["Construction Companies", "School Projects"])
 
 if selected_tab == "Construction Companies":
     st.subheader("Construction Companies in NYC")
