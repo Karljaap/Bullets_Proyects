@@ -41,7 +41,10 @@ df2 = filter_nyc_data(df2)
 # Function to create maps
 def create_map(data, color):
     nyc_coordinates = [40.7128, -74.0060]  # Center of New York City
-    mapa = folium.Map(location=nyc_coordinates, zoom_start=12, tiles="OpenStreetMap")
+    mapa = folium.Map(location=nyc_coordinates, zoom_start=12, tiles="OpenStreetMap",
+                      max_bounds=True,
+                      min_lat=NYC_BOUNDS['lat_min'], max_lat=NYC_BOUNDS['lat_max'],
+                      min_lon=NYC_BOUNDS['lon_min'], max_lon=NYC_BOUNDS['lon_max'])
 
     for _, row in data.iterrows():
         folium.CircleMarker(
