@@ -38,18 +38,49 @@ df1 = filter_nyc_data(df1)
 df2 = filter_nyc_data(df2)
 
 
-# Function to create maps
+# Function to create maps with strict NYC bounds
 def create_map(data, color):
-    nyc_coordinates = [40.7128, -74.0060]  # Center of New York City
-    mapa = folium.Map(location=nyc_coordinates, zoom_start=12, tiles="OpenStreetMap",
-                      max_bounds=True, control_scale=True)
+    # Calculate the center of NYC bounds
+    center_lat = (NYC_BOUNDS['lat_min'] + NYC_BOUNDS['lat_max']) / 2
+    center_lon = (NYC_BOUNDS['lon_min'] + NYC_BOUNDS['lon_max']) / 2
 
-    # Restricting the view strictly to NYC using bounds
-    mapa.fit_bounds([
-        [NYC_BOUNDS['lat_min'], NYC_BOUNDS['lon_min']],
-        [NYC_BOUNDS['lat_max'], NYC_BOUNDS['lon_max']]
-    ])
+    # Create map centered on NYC
+    mapa = folium.Map(
+        location=[center_lat, center_lon],
+        zoom_start=11,
+        tiles="OpenStreetMap",
+        max_bounds=True
+    )
 
+    # Set strict bounds for NYC
+    sw = [NYC_BOUNDS['lat_min'], NYC_BOUNDS['lon_min']]  # Southwest corner
+    ne = [NYC_BOUNDS['lat_max'], NYC_BOUNDS['lon_max']]  # Northeast corner
+
+    # Apply bounds to restrict the view
+    mapa.fit_bounds([sw, ne])
+
+    # Add a rectangle to visualize the bounds
+    folium.Rectangle(
+        bounds=[sw, ne],
+        color='gray',
+        weight=2,
+        fill=False,
+        dash_array='5, 5'
+    ).add_to(mapa)
+
+    # Restrict panning outside bounds
+    bounds_script = f"""
+    <script>
+        var map = document.getElementsByClassName('folium-map')[0]._leaflet_map;
+        map.setMaxBounds([
+            [{NYC_BOUNDS['lat_min']}, {NYC_BOUNDS['lon_min']}],
+            [{NYC_BOUNDS['lat_max']}, {NYC_BOUNDS['lon_max']}]
+        ]);
+        map.options.minZoom = 10;
+    </script>
+    """
+
+    # Add markers for each data point
     for _, row in data.iterrows():
         folium.CircleMarker(
             location=[row['latitude'], row['longitude']],
@@ -61,6 +92,9 @@ def create_map(data, color):
             fill_color=color,
             fill_opacity=0.7
         ).add_to(mapa)
+
+    # Add the script to enforce bounds
+    mapa.get_root().html.add_child(folium.Element(bounds_script))
 
     return mapa
 
@@ -94,7 +128,7 @@ if selected_tab == "Construction Companies":
     | **ADDRESS**          | Mailing address of the entity                            | `address`            | Text                |
     | **CITY**            | City where the entity is located                         | `city`               | Text                |
     | **STATE**            | State where the entity is located                        | `state`              | Text                |
-    | **POSTCODE**        | Postal code of the entity’s mailing address              | `postcode`           | Text                |
+    | **POSTCODE**        | Postal code of the entity's mailing address              | `postcode`           | Text                |
     | **PHONE**           | Phone number of the entity                               | `phone`              | Text                |
     | **EMAIL**           | Email contact of the entity                              | `email`              | Text                |
     | **APPLICATION TYPE** | Type of application filed by the entity                  | `application_type`   | Text                |
